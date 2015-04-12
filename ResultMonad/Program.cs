@@ -48,11 +48,19 @@ namespace ResultMonad
 
 
             var x = Result<string>.Ok("value");
+            // select and where
             var xx = from l in x 
                      where l.Equals("value")
                      select l + " and something" ;
             
             Console.WriteLine(xx.Value);
+            // select many
+            var xxx = 
+                from l in x
+                from m in xx
+                select l + m;
+
+            Console.WriteLine(xxx.Value);
             Console.ReadKey();
         }
     }
@@ -77,13 +85,17 @@ namespace ResultMonad
         {
             return value is Result<T>
                 ? value as Result<T>
-                : new Result<T>(value, true, "");
+                : new Result<T>(value, false, "");
+        }
+
+        public static Result<T> Fail()
+        {
+            return Fail("");
         }
 
         public static Result<T> Fail(string message)
         {
-            return new Result<T>(default(T), false, message);
-
+            return new Result<T>(default(T), true, message);
         }
     }
 
@@ -91,30 +103,30 @@ namespace ResultMonad
     {
         public static Result<TResult> OnSuccess<T, TResult>(this Result<T> source, Func<Result<TResult>> function)
         {
-            return source.IsFailed
+            return !source.IsFailed
                 ? function()
-                : Result<TResult>.Fail("");
+                : Result<TResult>.Fail();
         }
 
         public static Result<TResult> OnSuccess<T, TResult>(this Result<T> source, Func<T, Result<TResult>> function)
         {
-            return source.IsFailed
+            return !source.IsFailed
                 ? function(source.Value)
-                : Result<TResult>.Fail("");
+                : Result<TResult>.Fail();
         }
 
         public static Result<TResult> OnFail<T, TResult>(this Result<T> source, Func<Result<TResult>> function)
         {
-            return !source.IsFailed
+            return source.IsFailed
                 ? function()
-                : Result<TResult>.Fail("");
+                : Result<TResult>.Fail();
         }
 
         public static Result<TResult> OnFail<T, TResult>(this Result<T> source, Func<T, Result<TResult>> function)
         {
-            return !source.IsFailed
+            return source.IsFailed
                 ? function(source.Value)
-                : Result<TResult>.Fail("");
+                : Result<TResult>.Fail();
         }
 
         public static Result<TResult> OnBoth<T, TResult>(this Result<T> source, Func<Result<TResult>> function)
@@ -130,11 +142,11 @@ namespace ResultMonad
 
     public static class ResultLinqExtensions
     {
-        private static Result<T> ToResult<T>(this T value)
+        private static Result<T> ToResult<T>(this T value, bool isFailed = false, string message = "")
         {
             return value is Result<T>
                 ? value as Result<T>
-                : new Result<T>(value, true, "");
+                : new Result<T>(value, isFailed, message);
         }
 
         // refer: http://mikehadlow.blogspot.com.au/2011/01/monads-in-c-4-linq-loves-monads.html
@@ -215,7 +227,7 @@ namespace ResultMonad
         {
             var result = predicate(source.Value);
 
-            return result ? source : Result<T>.Fail("");
+            return result ? source : Result<T>.Fail();
         }
     }
 }
